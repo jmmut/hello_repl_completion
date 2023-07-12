@@ -1,84 +1,53 @@
-use rustyline::completion::Completer;
-use rustyline::highlight::Highlighter;
-use rustyline::hint::Hinter;
-use rustyline::history::DefaultHistory;
-use rustyline::line_buffer::{DeleteListener, Direction, LineBuffer};
-use rustyline::validate::Validator;
-use rustyline::{Changeset, CompletionType, Context, Helper, RepeatCount, Word};
-use rustyline::config::Configurer;
 
-type AnyError = Box<dyn std::error::Error>;
 
-const PROMPT: &'static str = "> ";
+use reedline::{default_emacs_keybindings, ColumnarMenu, DefaultCompleter, Emacs, KeyCode, KeyModifiers, Reedline, ReedlineEvent, ReedlineMenu, Signal, DefaultPrompt};
 
-struct IngestionHelper {}
-
-impl IngestionHelper {
-    pub fn new() -> Self {
-        Self {}
+fn main() {
+    let mut commands = vec![
+        "test".into(),
+        "hello world".into(),
+        "hello world reedline".into(),
+        "this is the reedline crate".into(),
+    ];
+    for i in 0..100 {
+        commands.push(format!("station{i}"));
     }
+    let completer = Box::new(DefaultCompleter::new_with_wordlen(commands.clone(), 2));
+// Use the interactive menu to select options from the completer
+    let completion_menu = Box::new(ColumnarMenu::default().with_name("completion_menu"));
+// Set up the required keybindings
+    let mut keybindings = default_emacs_keybindings();
+    keybindings.add_binding(
+        KeyModifiers::NONE,
+        KeyCode::Tab,
+        ReedlineEvent::UntilFound(vec![
+            ReedlineEvent::Menu("completion_menu".to_string()),
+            ReedlineEvent::MenuNext,
+        ]),
+    );
 
-    pub fn get_names_to_complete() -> Vec<String> {
-        let names = vec!["asdf", "aser", "qwer"];
-        names.iter().map(|s| s.to_string()).collect()
-    }
-}
-impl Helper for IngestionHelper {}
-impl Highlighter for IngestionHelper {}
-impl Validator for IngestionHelper {}
-impl Hinter for IngestionHelper {
-    type Hint = String;
+    let edit_mode = Box::new(Emacs::new(keybindings));
 
-    fn hint(&self, _line: &str, _pos: usize, _ctx: &Context<'_>) -> Option<Self::Hint> {
-        None
-    }
-}
+    let mut line_editor = Reedline::create()
+        .with_completer(completer)
+        .with_menu(ReedlineMenu::EngineCompleter(completion_menu))
+        .with_edit_mode(edit_mode);
 
-impl Completer for IngestionHelper {
-    type Candidate = String;
+    let prompt = DefaultPrompt::default();
 
-    fn complete(
-        &self,
-        line: &str,
-        pos: usize,
-        _ctx: &Context<'_>,
-    ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
-        let names = Self::get_names_to_complete();
-        let request = &line[..pos];
-        let prefix_matches  = names
-            .into_iter()
-            .filter(|candidate| candidate.to_lowercase().starts_with(&request.to_lowercase()))
-            .collect::<Vec<_>>();
-        Ok((prefix_matches.len(), prefix_matches))
-    }
-
-    fn update(&self, line: &mut LineBuffer, start: usize, elected: &str, cl: &mut Changeset) {
-        let deleted = line.delete_prev_word::<NoListener>(Word::Big, RepeatCount::default(), &mut NoListener {});
-        line.replace(line.pos()..line.pos(), elected, cl);
-    }
-}
-
-pub struct NoListener;
-
-impl DeleteListener for NoListener {
-    fn delete(&mut self, _idx: usize, _string: &str, _dir: Direction) {}
-}
-
-fn main() -> Result<(), AnyError> {
-    let mut rl = rustyline::Editor::<IngestionHelper, DefaultHistory>::new()?;
-
-    rl.set_completion_type(CompletionType::List);
-    rl.set_helper(Some(IngestionHelper::new()));
     loop {
-        let readline = rl.readline(PROMPT);
-
-        match readline {
-            Ok(line) => println!("Line: {:?}", line),
-            Err(_) => {
-                println!("No input");
+        let sig = line_editor.read_line(&prompt);
+        match sig {
+            Ok(Signal::Success(buffer)) => {
+                println!("We processed: {}", buffer);
+            }
+            Ok(Signal::CtrlD) | Ok(Signal::CtrlC) => {
+                println!("\nAborted!");
                 break;
+            }
+            x => {
+                println!("Event: {:?}", x);
             }
         }
     }
-    Ok(())
 }
