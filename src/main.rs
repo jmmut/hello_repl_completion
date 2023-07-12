@@ -4,11 +4,12 @@ use rustyline::hint::Hinter;
 use rustyline::history::DefaultHistory;
 use rustyline::line_buffer::{DeleteListener, Direction, LineBuffer};
 use rustyline::validate::Validator;
-use rustyline::{Changeset, Context, Helper, RepeatCount, Word};
+use rustyline::{Changeset, CompletionType, Context, Helper, RepeatCount, Word};
+use rustyline::config::Configurer;
 
 type AnyError = Box<dyn std::error::Error>;
 
-const PROMPT: &'static str = ">> ";
+const PROMPT: &'static str = "> ";
 
 struct IngestionHelper {}
 
@@ -18,7 +19,7 @@ impl IngestionHelper {
     }
 
     pub fn get_names_to_complete() -> Vec<String> {
-        let names = vec!["asdf", "qwer"];
+        let names = vec!["asdf", "aser", "qwer"];
         names.iter().map(|s| s.to_string()).collect()
     }
 }
@@ -46,7 +47,7 @@ impl Completer for IngestionHelper {
         let request = &line[..pos];
         let prefix_matches  = names
             .into_iter()
-            .filter(|candidate| candidate.starts_with(request))
+            .filter(|candidate| candidate.to_lowercase().starts_with(&request.to_lowercase()))
             .collect::<Vec<_>>();
         Ok((prefix_matches.len(), prefix_matches))
     }
@@ -66,6 +67,7 @@ impl DeleteListener for NoListener {
 fn main() -> Result<(), AnyError> {
     let mut rl = rustyline::Editor::<IngestionHelper, DefaultHistory>::new()?;
 
+    rl.set_completion_type(CompletionType::List);
     rl.set_helper(Some(IngestionHelper::new()));
     loop {
         let readline = rl.readline(PROMPT);
