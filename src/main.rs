@@ -1,6 +1,6 @@
 
 
-use reedline::{default_emacs_keybindings, ColumnarMenu, DefaultCompleter, Emacs, KeyCode, KeyModifiers, Reedline, ReedlineEvent, ReedlineMenu, Signal, DefaultPrompt, Completer, Suggestion, Span, StyledText};
+use reedline::{default_emacs_keybindings, ColumnarMenu, DefaultCompleter, Emacs, KeyCode, KeyModifiers, Reedline, ReedlineEvent, ReedlineMenu, Signal, DefaultPrompt, Completer, Suggestion, Span, StyledText, DefaultPromptSegment};
 use nu_ansi_term::{Color, Style};
 
 struct IngestionCompleter;
@@ -38,7 +38,7 @@ fn find_substr_filter(word: &str, candidates: Vec<&str>) -> Vec<String> {
 }
 
 fn complete_buckets(word: &str) -> Vec<String> {
-    find_substr_filter(word, vec!["am-ingestion-intrasonics-rajar", "am-ingestion-tveyes", "am-ingestion-intrasonics-http-radio"])
+    find_substr_filter(word, vec!["am-ingestion-custom-http", "am-ingestion-provider", "am-ingestion-custom-radio"])
 
 }
 fn complete_date(word: &str) -> Vec<String> {
@@ -125,8 +125,14 @@ fn main() {
         .with_menu(ReedlineMenu::EngineCompleter(completion_menu))
         .with_edit_mode(edit_mode);
 
-    let prompt = DefaultPrompt::default();
+    let prompt = DefaultPrompt {
+        left_prompt: DefaultPromptSegment::Empty,
+        right_prompt: DefaultPromptSegment::Empty,
+    };
 
+    println!("You can write: '<bucket> <date> <station> [<more_stations> ...]'");
+    println!("Press TAB at any time to get suggestions, navigate the suggestions with TAB or arrows, accept with enter.");
+    println!("You can write substrings to filter suggestions, e.g., 'custom<TAB>', or <TAB>custom");
     loop {
         let sig = line_editor.read_line(&prompt);
         match sig {
