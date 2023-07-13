@@ -7,4 +7,5 @@ default-run = "hello_rustyline"
 
 [dependencies]
 rustyline = "11.0.0"
-reedline = "0.20.0"
+reedline = "=0.21.0"
+nu-ansi-term = "=0.47.0"
